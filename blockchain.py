@@ -9,7 +9,6 @@ import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-# Caminho do arquivo de nós
 NODES_FILE = 'nodes.txt'
 
 class Blockchain:
@@ -18,7 +17,6 @@ class Blockchain:
         self.chain = []
         self.nodes = set()
 
-        # Cria o bloco gênese
         self.new_block(previous_hash='1', proof=100)
 
     def register_node(self, address):
@@ -30,7 +28,6 @@ class Blockchain:
         if parsed_url.netloc:
             self.nodes.add(parsed_url.netloc)
         elif parsed_url.path:
-            # Aceita um URL sem esquema como '192.168.0.5:5000'
             self.nodes.add(parsed_url.path)
         else:
             raise ValueError('URL inválido')
@@ -46,12 +43,10 @@ class Blockchain:
 
         while current_index < len(chain):
             block = chain[current_index]
-            # Verifica se o hash do bloco está correto
             last_block_hash = self.hash(last_block)
             if block['previous_hash'] != last_block_hash:
                 return False
 
-            # Verifica se o Proof of Work está correto
             if not self.valid_proof(last_block['proof'], block['proof'], last_block_hash):
                 return False
 
@@ -142,7 +137,6 @@ class Blockchain:
             'previous_hash': previous_hash or self.hash(self.chain[-1]),
         }
 
-        # Reseta a lista de transações
         self.current_transactions = []
 
         self.chain.append(block)
@@ -235,7 +229,7 @@ def register_nodes_automatically(new_node_url):
 
 app = Flask(__name__)
 CORS(app)
-node_identifier = str(uuid4()).replace('-', '')  # Identificador único para o nó
+node_identifier = str(uuid4()).replace('-', '') 
 blockchain = Blockchain()
 
 @app.route('/mine', methods=['GET'])
@@ -333,16 +327,15 @@ def register_nodes_automatically(node_url):
     """
     Registra este nó automaticamente nos outros nós existentes.
     """
-    # Lê os nós do arquivo
     try:
         with open('nodes.txt', 'r') as file:
             nodes = file.readlines()
         
         for node in nodes:
-            node = node.strip()  # Remover possíveis espaços extras ou quebras de linha
-            if node != node_url:  # Não tentar registrar o nó atual em si mesmo
+            node = node.strip()  
+            if node != node_url: 
                 try:
-                    # Garantir que a URL está corretamente formatada com "http://"
+                   
                     if not node.startswith('http://'):
                         node = 'http://' + node
                     
@@ -356,7 +349,6 @@ def register_nodes_automatically(node_url):
     except FileNotFoundError:
         print("Arquivo de nós não encontrado. Certifique-se de que o arquivo 'nodes.txt' existe.")
 
-# novas
 
 
 if __name__ == '__main__':
@@ -367,7 +359,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     port = args.port
 
-    # Registra os nós automaticamente ao iniciar o servidor
     register_nodes_automatically(f'http://127.0.0.1:{port}')
 
     app.run(host='127.0.0.1', port=port)

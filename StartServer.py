@@ -10,20 +10,19 @@ def read_existing_ports():
         return []
     with open('nodes.txt', 'r') as file:
         nodes = file.readlines()
-    return [node.strip().split(":")[-1] for node in nodes]  # Pega a porta de cada nó
+    return [node.strip().split(":")[-1] for node in nodes]  
 
 def start_server(port=5000):
     """Função que inicializa o servidor na porta fornecida."""
     node_url = f"http://127.0.0.1:{port}"
     
-    # Verifica se o arquivo de nós existe, se não, cria
     if not os.path.exists('nodes.txt'):
         with open('nodes.txt', 'w') as file:
             file.write(f"{node_url}\n")
     else:
-        # Se o arquivo existe, registra o nó no arquivo
-        add_node_to_file(node_url)  # Registra o nó no arquivo e nos outros nós
-        register_nodes_automatically(node_url)  # Registra o nó atual nos outros
+
+        add_node_to_file(node_url) 
+        register_nodes_automatically(node_url) 
 
     # Inicia o servidor
     from blockchain import app
@@ -32,7 +31,7 @@ def start_server(port=5000):
 def all_servers_ready(ports):
     """Verifica se todos os servidores estão prontos (respondendo a uma requisição GET)."""
     for port in ports:
-        node_url = f"http://127.0.0.1:{port}/chain"  # Rota comum de todos os servidores para verificar
+        node_url = f"http://127.0.0.1:{port}/chain"
         while True:
             try:
                 response = requests.get(node_url)
@@ -62,30 +61,23 @@ def register_all_nodes(ports):
 
 def start_multiple_servers():
     """Função para iniciar múltiplos servidores e garantir que todos estejam prontos antes de registrar entre si."""
-    # Lê as portas dos nós registrados no arquivo
     registered_ports = read_existing_ports()
     
-    # Define uma lista de portas padrão (5000 até 5005, por exemplo)
     default_ports = [5000, 5001, 5002, 5003, 5004,5005,5006,5007]
     
-    # Adiciona qualquer nova porta ao conjunto de portas
     ports = set(registered_ports).union(default_ports)
     
     processes = []
     for port in ports:
-        # Criar um processo para iniciar cada servidor
         process = multiprocessing.Process(target=start_server, args=(port,))
         processes.append(process)
         process.start()
-        sleep(1)  # Atrasar o início de cada processo para garantir que as portas não colidam
-    
-    # Verificar se todos os servidores estão prontos antes de registrar os nós entre si
+        sleep(1)  
+        
     all_servers_ready(list(ports))
 
-    # Registrar todos os nós entre si após todos estarem prontos
     register_all_nodes(list(ports))
 
-    # Espera todos os processos terminarem
     for process in processes:
         process.join()
 
