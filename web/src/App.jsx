@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { newTransaction, mineBlock, resolveConflicts, getChain } from './services/blockchain';
+import { newTransaction, getChain } from './services/blockchain';
 
 function App() {
   const [sender, setSender] = useState('');
@@ -19,16 +19,6 @@ function App() {
   const handleNewTransaction = async () => {
     const result = await newTransaction(sender, recipient, amount, port);
     setMessage(result.message || 'Transaction added successfully!');
-  };
-
-  const handleMineBlock = async () => {
-    const result = await mineBlock(port);
-    setMessage(result.message || 'Block mined successfully!');
-  };
-
-  const handleResolveConflicts = async () => {
-    const result = await resolveConflicts(port);
-    setMessage(result.message || 'Conflicts resolved successfully!');
   };
 
   const handleGetChain = async () => {
@@ -58,9 +48,6 @@ function App() {
     }
     return "N/A";
   };
-
-
-
 
   return (
     <div className="App">
@@ -105,18 +92,6 @@ function App() {
           value={amount}
         />
         <button onClick={handleNewTransaction}>Create Transaction</button>
-      </div>
-
-      {/* Minerar bloco */}
-      <div>
-        <h2>Mine Block</h2>
-        <button onClick={handleMineBlock}>Mine</button>
-      </div>
-
-      {/* Resolver conflitos */}
-      <div>
-        <h2>Resolve Conflicts</h2>
-        <button onClick={handleResolveConflicts}>Resolve</button>
       </div>
 
       {/* Ver cadeia de blocos */}

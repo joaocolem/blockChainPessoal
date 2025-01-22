@@ -4,82 +4,83 @@ from blockchain import Blockchain, add_node_to_file, register_nodes_automaticall
 from time import sleep
 import requests
 
-def read_existing_ports():
-    """Lê as portas dos nós registrados no arquivo nodes.txt"""
-    if not os.path.exists('nodes.txt'):
-        return []
-    with open('nodes.txt', 'r') as file:
-        nodes = file.readlines()
-    return [node.strip().split(":")[-1] for node in nodes]  
+def get_registered_ports(file_path='nodes.txt'):
+    """Obtém as portas dos nós já registrados no arquivo nodes.txt."""
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as file:
+            return [line.strip().split(":")[-1] for line in file.readlines()]
+    return []
 
-def start_server(port=5000):
-    """Função que inicializa o servidor na porta fornecida."""
+def register_node(port, file_path='nodes.txt'):
+    """Registra um nó no arquivo e configura automaticamente."""
     node_url = f"http://127.0.0.1:{port}"
-    
-    if not os.path.exists('nodes.txt'):
-        with open('nodes.txt', 'w') as file:
+    if not os.path.exists(file_path):
+        with open(file_path, 'w') as file:
             file.write(f"{node_url}\n")
     else:
+        add_node_to_file(node_url)
+        register_nodes_automatically(node_url)
 
-        add_node_to_file(node_url) 
-        register_nodes_automatically(node_url) 
-
-    # Inicia o servidor
+def launch_server(port):
+    """Inicializa o servidor na porta especificada."""
     from blockchain import app
     app.run(host='127.0.0.1', port=port)
 
-def all_servers_ready(ports):
-    """Verifica se todos os servidores estão prontos (respondendo a uma requisição GET)."""
-    for port in ports:
-        node_url = f"http://127.0.0.1:{port}/chain"
-        while True:
-            try:
-                response = requests.get(node_url)
-                if response.status_code == 200:
-                    print(f"Servidor na porta {port} está pronto.")
-                    break
-            except requests.exceptions.RequestException:
-                print(f"Aguardando o servidor na porta {port}...")
-            sleep(1)
+def monitor_server(port):
+    """Espera o servidor na porta especificada ficar pronto."""
+    node_url = f"http://127.0.0.1:{port}/chain"
+    while True:
+        try:
+            response = requests.get(node_url)
+            if response.status_code == 200:
+                print(f"Servidor na porta {port} está pronto.")
+                return
+        except requests.exceptions.RequestException:
+            print(f"Aguardando o servidor na porta {port}...")
+        sleep(1)
 
-def register_all_nodes(ports):
-    """Registra todos os nós entre si após estarem prontos."""
-    for i, port in enumerate(ports):
+def connect_nodes(ports):
+    """Interconecta todos os nós fornecidos."""
+    for port in ports:
         node_url = f"http://127.0.0.1:{port}"
-        for other_port in ports:
-            if other_port != port:
-                other_node_url = f"http://127.0.0.1:{other_port}"
-                print(f"Registrando nó {node_url} em {other_node_url}")
-                try:
-                    response = requests.post(f"{other_node_url}/nodes/register", json={"nodes": [node_url]})
-                    if response.status_code == 201:
-                        print(f"Registro do nó {node_url} em {other_node_url} bem-sucedido.")
-                    else:
-                        print(f"Erro ao tentar registrar nó {node_url} em {other_node_url}.")
-                except requests.exceptions.RequestException as e:
-                    print(f"Erro ao tentar registrar nó {node_url} em {other_node_url}: {e}")
+        
+        target_urls = [f"http://127.0.0.1:{target_port}" for target_port in ports if target_port != port]
+        
+        try:
+            response = requests.post(f"{node_url}/nodes/register", json={"nodes": target_urls})
+            if response.status_code == 201:
+                print(f"Todos os nós registrados com sucesso em {node_url}.")
+            else:
+                print(f"Erro ao registrar nós em {node_url}: {response.status_code} - {response.text}")
+        except requests.exceptions.RequestException as e:
+            print(f"Erro ao conectar com {node_url}: {e}")
 
-def start_multiple_servers():
-    """Função para iniciar múltiplos servidores e garantir que todos estejam prontos antes de registrar entre si."""
-    registered_ports = read_existing_ports()
-    
-    default_ports = [5000, 5001, 5002, 5003, 5004,5005,5006,5007]
-    
-    ports = set(registered_ports).union(default_ports)
-    
+def initialize_servers(ports):
+    """Inicia e monitora múltiplos servidores."""
     processes = []
+
     for port in ports:
-        process = multiprocessing.Process(target=start_server, args=(port,))
+        register_node(port)
+        process = multiprocessing.Process(target=launch_server, args=(port,))
         processes.append(process)
         process.start()
-        sleep(1)  
-        
-    all_servers_ready(list(ports))
+        sleep(1)
 
-    register_all_nodes(list(ports))
+    for port in ports:
+        monitor_server(port)
+
+    connect_nodes(ports)
 
     for process in processes:
         process.join()
 
+def main():
+    """Controla o fluxo principal de inicialização e registro de servidores."""
+    default_ports = [5000, 5001, 5002, 5003, 5004, 5005, 5006, 5007]
+    registered_ports = get_registered_ports()
+    all_ports = sorted(set(map(int, registered_ports + default_ports)))
+
+    initialize_servers(all_ports)
+
 if __name__ == '__main__':
-    start_multiple_servers()
+    main()

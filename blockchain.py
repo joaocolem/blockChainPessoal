@@ -267,7 +267,30 @@ def new_transaction():
 
     index = blockchain.new_transaction(values['sender'], values['recipient'], values['amount'])
 
-    response = {'message': f'Transação será adicionada ao bloco {index}'}
+    last_block = blockchain.last_block
+    proof = blockchain.proof_of_work(last_block)
+    previous_hash = blockchain.hash(last_block)
+    block = blockchain.new_block(proof, previous_hash)
+
+    print(f"Novo bloco minerado: {block}")
+
+    nodes = list(blockchain.nodes) 
+    for node in nodes:
+        try:
+            url = f'http://{node}/nodes/resolve'
+            response = requests.get(url)
+            if response.status_code == 200:
+                print(f"Conflitos resolvidos com sucesso no nó {node}.")
+            else:
+                print(f"Falha ao resolver conflitos no nó {node}. Status code: {response.status_code}")
+        except Exception as e:
+            print(f"Erro ao conectar ao nó {node}: {e}")
+
+    response = {
+        'message': f'Transação será adicionada ao bloco {index}, bloco minerado com sucesso!',
+        'block': block,
+        'nodes_resolved': len(nodes)
+    }
     return jsonify(response), 201
 
 
@@ -321,6 +344,7 @@ def add_node_to_file(node_url):
     with open('nodes.txt', 'a') as file:
         file.write(f"{node_url}\n")
     print(f"Nó {node_url} registrado no arquivo de nós.")
+
 
 
 def register_nodes_automatically(node_url):
